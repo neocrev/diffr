@@ -165,7 +165,7 @@ function renderDiff(diff, leftLines, rightLines) {
   const changes = adds + dels;
   
   if (mode === 'unified') {
-    let html = `<div class="panel-header"><span class="label">Diff (unified)</span><span class="count">+${adds}/-${dels}/=${ctxs} · ${changes} changes</span></div><div class="diff-panel">`;
+    let html = `<div class="panel-header"><span class="label">Diff (unified)</span><span class="count">+${adds}/-${dels}/=${ctxs} · ${changes} changes</span><button class="btn btn-sm" style="margin-left:auto" onclick="copyDiff()">Copy</button></div><div class="diff-panel">`;
     
     // Group into hunks
     let hunkStart = null;
@@ -216,7 +216,7 @@ function renderDiff(diff, leftLines, rightLines) {
     pane.innerHTML = html;
   } else {
     // Side by side
-    let html = `<div class="panel-header"><span class="label">Diff (side-by-side)</span><span class="count">+${adds}/-${dels}/=${ctxs} · ${changes} changes</span></div>
+    let html = `<div class="panel-header"><span class="label">Diff (side-by-side)</span><span class="count">+${adds}/-${dels}/=${ctxs} · ${changes} changes</span><button class="btn btn-sm" style="margin-left:auto" onclick="copyDiff()">Copy</button></div>
     <div style="display:flex;flex:1;overflow:hidden">
       <div class="diff-panel" style="width:50%;border-right:1px solid #24253a">
         <div class="panel-header" style="border-bottom:none;background:#0f0f1a">Original</div>
@@ -257,6 +257,24 @@ function tabExpand(s) {
 
 function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function copyDiff(){
+  const left=document.getElementById('leftInput').value.split('\n');
+  const right=document.getElementById('rightInput').value.split('\n');
+  const diff=computeLCS(left,right);
+  let lines=[];
+  let oldLine=1,newLine=1;
+  for(const d of diff){
+    if(d.type==='ctx'){lines.push(' '+left[d.li]);oldLine++;newLine++;}
+    else if(d.type==='del'){lines.push('-'+left[d.li]);oldLine++;}
+    else if(d.type==='add'){lines.push('+'+right[d.ri]);newLine++;}
+  }
+  const text='--- original\n+++ changed\n@@ -1,'+left.length+' +1,'+right.length+' @@\n'+lines.join('\n');
+  navigator.clipboard.writeText(text).then(()=>{
+    const btn=document.querySelector('button[onclick*=\"copyDiff\"]');
+    if(btn){const t=btn.textContent;btn.textContent='✓ Copied!';setTimeout(()=>btn.textContent=t,1200);}
+  }).catch(()=>{});
 }
 
 // Initial empty state
