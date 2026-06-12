@@ -68,6 +68,7 @@ textarea::placeholder{color:#414868}
     <button onclick="setTabSize(8)">8</button>
   </div>
   <button class="btn btn-secondary btn-sm" id="wrapBtn" onclick="toggleWrap()">Wrap</button>
+  <button class="btn btn-secondary btn-sm" onclick="document.getElementById('leftInput').value='';document.getElementById('rightInput').value='';computeDiff()">Clear</button>
   <button class="btn btn-primary" onclick="computeDiff()">Diff</button>
 </header>
 <main>
