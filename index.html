@@ -299,6 +299,14 @@ function downloadDiff(){
 
 // Initial empty state
 computeDiff();
+
+document.addEventListener('keydown',e=>{
+  if((e.key==='c'||e.key==='C')&&(e.ctrlKey||e.metaKey)&&e.shiftKey){
+    document.getElementById('leftInput').value='';
+    document.getElementById('rightInput').value='';
+    computeDiff();
+  }
+});
 </script>
 </body>
 </html>
