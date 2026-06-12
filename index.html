@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>diffr — Side-by-Side Diff Viewer</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237aa2f7' stroke-width='1.5' stroke-linecap='round'><path d='M11 19V5M5 12l6-6 6 6'/></svg>">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0f0f1a;color:#c0caf5;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+header{display:flex;align-items:center;gap:12px;padding:10px 16px;background:#1a1b2e;border-bottom:1px solid #24253a}
+header h1{font-size:16px;font-weight:700;color:#e0e0f0}
+header span{font-size:12px;color:#565f89}
+.btn{padding:6px 14px;border-radius:6px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:background .15s}
+.btn-primary{background:#7aa2f7;color:#0f0f1a;margin-left:auto}
+.btn-primary:hover{background:#89b4fa}
+.btn-secondary{background:#24253a;color:#c0caf5}
+.btn-secondary:hover{background:#32345a}
+.btn-group{display:flex;gap:4px}
+.btn-group .btn{border-radius:0}
+.btn-group .btn:first-child{border-radius:6px 0 0 6px}
+.btn-group .btn:last-child{border-radius:0 6px 6px 0}
+.btn.active{background:#7aa2f7;color:#0f0f1a}
+.btn-sm{padding:4px 10px;font-size:11px}
+main{flex:1;display:flex;overflow:hidden;min-height:0}
+.input-panel{width:50%;display:flex;flex-direction:column;border-right:1px solid #24253a;min-width:0}
+.input-panel:last-child{border-right:none}
+.panel-header{display:flex;align-items:center;gap:8px;padding:6px 12px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#565f89;background:#1a1b2e;border-bottom:1px solid #24253a}
+.panel-header .label{flex:1}
+.panel-header .count{font-size:10px;color:#414868;font-weight:400}
+textarea{flex:1;width:100%;background:#0f0f1a;border:none;color:#c0caf5;padding:12px;font-family:'SF Mono','Fira Code','Cascadia Code',monospace;font-size:13px;line-height:1.5;resize:none;tab-size:2}
+textarea:focus{outline:none}
+textarea::placeholder{color:#414868}
+.diff-panel{width:100%;overflow:auto;background:#0f0f1a}
+.diff-line{display:flex;font-family:'SF Mono','Fira Code',monospace;font-size:13px;line-height:1.5;border-bottom:1px solid #0a0b14;min-height:21px}
+.diff-num{width:48px;min-width:48px;text-align:right;padding:0 6px;color:#414868;user-select:none;background:#141524}
+.diff-content{flex:1;padding:0 10px;white-space:pre;overflow-x:auto}
+.diff-line.add{background:#1a3a2a}
+.diff-line.add .diff-num{background:#1d3f2e}
+.diff-line.del{background:#3a1a2a}
+.diff-line.del .diff-num{background:#3f1d2e}
+.diff-line.ctx{background:transparent}
+.diff-line.header{background:#1a1b2e;color:#7aa2f7;font-weight:600}
+.diff-line.header .diff-num{background:#1f2040}
+.tab-size{display:flex;gap:2px}
+.tab-size button{padding:2px 6px;border:1px solid #24253a;background:transparent;color:#565f89;font-size:10px;cursor:pointer;border-radius:2px}
+.tab-size button.active{background:#32345a;color:#c0caf5;border-color:#7aa2f7}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#565f89;font-size:14px;gap:8px}
+.empty-state .hint{font-size:12px;color:#414868}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#24253a;border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:#32345a}
+</style>
+</head>
+<body>
+<header>
+  <h1>diffr</h1>
+  <span>side-by-side diff</span>
+  <div class="btn-group">
+    <button class="btn btn-sm" id="modeSide" onclick="setMode('side')">Side</button>
+    <button class="btn btn-sm" id="modeUnified" onclick="setMode('unified')">Unified</button>
+  </div>
+  <div class="tab-size">
+    <button onclick="setTabSize(2)" class="active">2</button>
+    <button onclick="setTabSize(4)">4</button>
+    <button onclick="setTabSize(8)">8</button>
+  </div>
+  <button class="btn btn-primary" onclick="computeDiff()">Diff</button>
+</header>
+<main>
+  <div class="input-panel">
+    <div class="panel-header"><span class="label">Original</span><span class="count" id="leftCount">0 lines</span></div>
+    <textarea id="leftInput" placeholder="Paste original text here..." oninput="autoDiff()"></textarea>
+  </div>
+  <div class="input-panel" id="outputPanel">
+    <div class="panel-header"><span class="label">Changed</span><span class="count" id="rightCount">0 lines</span></div>
+    <textarea id="rightInput" placeholder="Paste changed text here..." oninput="autoDiff()"></textarea>
+  </div>
+</main>
+
+<script>
+let mode = 'side';
+let tabSize = 2;
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('modeSide').className = 'btn btn-sm' + (m==='side'?' active':'');
+  document.getElementById('modeUnified').className = 'btn btn-sm' + (m==='unified'?' active':'');
+  computeDiff();
+}
+
+function setTabSize(n) {
+  tabSize = n;
+  document.querySelectorAll('.tab-size button').forEach(b => b.className = b.textContent==String(n)?'active':'');
+  computeDiff();
+}
+
+let diffTimer = null;
+function autoDiff() {
+  clearTimeout(diffTimer);
+  diffTimer = setTimeout(computeDiff, 300);
+}
+
+function computeDiff() {
+  const left = document.getElementById('leftInput').value;
+  const right = document.getElementById('rightInput').value;
+  const leftLines = left.split('\n');
+  const rightLines = right.split('\n');
+  document.getElementById('leftCount').textContent = leftLines.length + ' lines';
+  document.getElementById('rightCount').textContent = rightLines.length + ' lines';
+
+  if (!left && !right) {
+    const pane = document.getElementById('outputPanel');
+    pane.innerHTML = `
+      <div class="panel-header"><span class="label">Diff</span><span class="count">0 changes</span></div>
+      <div class="diff-panel"><div class="empty-state"><span>Paste text in both panels to see diff</span></div></div>`;
+    return;
+  }
+
+  const diff = computeLCS(leftLines, rightLines);
+  renderDiff(diff, leftLines, rightLines);
+}
+
+function computeLCS(a, b) {
+  // Simple LCS-based diff
+  const m = a.length, n = b.length;
+  const dp = Array.from({length: m+1}, () => new Int32Array(n+1));
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] + 1 : Math.max(dp[i-1][j], dp[i][j-1]);
+  
+  const result = [];
+  let i = m, j = n;
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && a[i-1] === b[j-1]) {
+      result.push({type:'ctx', li:i-1, ri:j-1});
+      i--; j--;
+    } else if (j > 0 && (i === 0 || dp[i][j-1] >= dp[i-1][j])) {
+      result.push({type:'add', li:-1, ri:j-1});
+      j--;
+    } else {
+      result.push({type:'del', li:i-1, ri:-1});
+      i--;
+    }
+  }
+  result.reverse();
+  return result;
+}
+
+function renderDiff(diff, leftLines, rightLines) {
+  const pane = document.getElementById('outputPanel');
+  const changes = diff.filter(d => d.type !== 'ctx').length;
+  
+  if (mode === 'unified') {
+    let html = `<div class="panel-header"><span class="label">Diff (unified)</span><span class="count">${changes} changes</span></div><div class="diff-panel">`;
+    
+    // Group into hunks
+    let hunkStart = null;
+    for (let i = 0; i < diff.length; i++) {
+      const d = diff[i];
+      if (d.type === 'ctx') {
+        if (hunkStart !== null && i > hunkStart + 3) {
+          // close hunk, show context
+          html += `<div class="diff-line ctx"><div class="diff-num">…</div><div class="diff-content"></div></div>`;
+          // show trailing context
+          for (let k = i-2; k <= i && k < diff.length; k++) {
+            const dk = diff[k];
+            if (dk.type === 'ctx') {
+              const line = tabExpand(leftLines[dk.li]);
+              html += `<div class="diff-line ctx"><div class="diff-num">${dk.li+1}</div><div class="diff-content">${esc(line)}</div></div>`;
+            }
+          }
+          hunkStart = null;
+        }
+        continue;
+      }
+      if (hunkStart === null) {
+        hunkStart = i;
+        // show 2 context lines before
+        const ctxBefore = Math.min(2, i);
+        for (let k = i - ctxBefore; k < i; k++) {
+          if (k >= 0) {
+            const dk = diff[k];
+            if (dk.type === 'ctx') {
+              const line = tabExpand(leftLines[dk.li]);
+              html += `<div class="diff-line ctx"><div class="diff-num">${dk.li+1}</div><div class="diff-content">${esc(line)}</div></div>`;
+            }
+          }
+        }
+      }
+      if (d.type === 'del') {
+        const line = tabExpand(leftLines[d.li]);
+        html += `<div class="diff-line del"><div class="diff-num">${d.li+1}</div><div class="diff-content">${esc(line)}</div></div>`;
+      } else if (d.type === 'add') {
+        const line = tabExpand(rightLines[d.ri]);
+        html += `<div class="diff-line add"><div class="diff-num">${d.ri+1}</div><div class="diff-content">${esc(line)}</div></div>`;
+      } else if (d.type === 'ctx') {
+        const line = tabExpand(leftLines[d.li]);
+        html += `<div class="diff-line ctx"><div class="diff-num">${d.li+1}</div><div class="diff-content">${esc(line)}</div></div>`;
+      }
+    }
+    html += '</div>';
+    pane.innerHTML = html;
+  } else {
+    // Side by side
+    let html = `<div class="panel-header"><span class="label">Diff (side-by-side)</span><span class="count">${changes} changes</span></div>
+    <div style="display:flex;flex:1;overflow:hidden">
+      <div class="diff-panel" style="width:50%;border-right:1px solid #24253a">
+        <div class="panel-header" style="border-bottom:none;background:#0f0f1a">Original</div>
+        <div id="sideLeft">`;
+    for (const d of diff) {
+      if (d.type === 'del') {
+        const line = tabExpand(leftLines[d.li]);
+        html += `<div class="diff-line del"><div class="diff-num">${d.li+1}</div><div class="diff-content">${esc(line)}</div></div>`;
+      } else if (d.type === 'ctx') {
+        const line = tabExpand(leftLines[d.li]);
+        html += `<div class="diff-line ctx"><div class="diff-num">${d.li+1}</div><div class="diff-content">${esc(line)}</div></div>`;
+      } else {
+        html += `<div class="diff-line"><div class="diff-num" style="color:#24253a">&nbsp;</div><div class="diff-content" style="color:#24253a">&nbsp;</div></div>`;
+      }
+    }
+    html += `</div></div><div class="diff-panel" style="width:50%">
+        <div class="panel-header" style="border-bottom:none;background:#0f0f1a">Changed</div>
+        <div id="sideRight">`;
+    for (const d of diff) {
+      if (d.type === 'add') {
+        const line = tabExpand(rightLines[d.ri]);
+        html += `<div class="diff-line add"><div class="diff-num">${d.ri+1}</div><div class="diff-content">${esc(line)}</div></div>`;
+      } else if (d.type === 'ctx') {
+        const line = tabExpand(rightLines[d.ri]);
+        html += `<div class="diff-line ctx"><div class="diff-num">${d.ri+1}</div><div class="diff-content">${esc(line)}</div></div>`;
+      } else {
+        html += `<div class="diff-line"><div class="diff-num" style="color:#24253a">&nbsp;</div><div class="diff-content" style="color:#24253a">&nbsp;</div></div>`;
+      }
+    }
+    html += `</div></div></div>`;
+    pane.innerHTML = html;
+  }
+}
+
+function tabExpand(s) {
+  return s.replace(/\t/g, ' '.repeat(tabSize));
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Initial empty state
+computeDiff();
+</script>
+</body>
+</html>
