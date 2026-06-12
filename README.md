@@ -27,6 +27,10 @@
 - **Diff summary** — shows +added/-removed/=unchanged line counts in header
 - **Word Wrap** — toggle to wrap long lines instead of scrolling
 - **Copy diff** — one-click copy as unified diff text
+- **Save diff** — download diff as `.patch` file
+- **Live indicator** — shows auto-diff is active
+- **Clear** — reset both input panels
+- **Keyboard shortcut** — `Ctrl+Shift+C` clears both panels
 - **Zero dependencies** — no libraries, no build step, no telemetry
 
 ## Usage
