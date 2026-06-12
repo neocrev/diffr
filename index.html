@@ -58,6 +58,7 @@ textarea::placeholder{color:#414868}
 <header>
   <h1>diffr</h1>
   <span>side-by-side diff</span>
+  <span id="liveIndicator" style="font-size:10px;color:#7ecb8b;opacity:0.4;transition:opacity.15s">● Live</span>
   <div class="btn-group">
     <button class="btn btn-sm" id="modeSide" onclick="setMode('side')">Side</button>
     <button class="btn btn-sm" id="modeUnified" onclick="setMode('unified')">Unified</button>
@@ -109,7 +110,11 @@ function setTabSize(n) {
 let diffTimer = null;
 function autoDiff() {
   clearTimeout(diffTimer);
-  diffTimer = setTimeout(computeDiff, 300);
+  document.getElementById('liveIndicator').style.opacity='0.4';
+  diffTimer = setTimeout(()=>{
+    computeDiff();
+    document.getElementById('liveIndicator').style.opacity='1';
+  }, 300);
 }
 
 function computeDiff() {
