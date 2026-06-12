@@ -24,6 +24,9 @@
 - **Auto-diff** — results update automatically while you type (300ms debounce)
 - **Tab size** control — renders tabs as 2, 4, or 8 spaces
 - **Syntax-coloured** diff output — green additions, red deletions, neutral context
+- **Diff summary** — shows +added/-removed/=unchanged line counts in header
+- **Word Wrap** — toggle to wrap long lines instead of scrolling
+- **Copy diff** — one-click copy as unified diff text
 - **Zero dependencies** — no libraries, no build step, no telemetry
 
 ## Usage
