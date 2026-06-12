@@ -312,6 +312,14 @@ document.addEventListener('keydown',e=>{
     document.getElementById('rightInput').value='';
     computeDiff();
   }
+  if((e.key==='u'||e.key==='U')&&(e.ctrlKey||e.metaKey)&&e.shiftKey){
+    const btn=document.getElementById('modeToggle');
+    if(btn){btn.click();e.preventDefault();}
+  }
+  if((e.key==='w'||e.key==='W')&&(e.ctrlKey||e.metaKey)&&e.shiftKey){
+    const btn=document.querySelector('.wrap-btn');
+    if(btn){btn.click();e.preventDefault();}
+  }
 });
 </script>
 </body>
