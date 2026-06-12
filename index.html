@@ -159,10 +159,13 @@ function computeLCS(a, b) {
 
 function renderDiff(diff, leftLines, rightLines) {
   const pane = document.getElementById('outputPanel');
-  const changes = diff.filter(d => d.type !== 'ctx').length;
+  const adds = diff.filter(d => d.type === 'add').length;
+  const dels = diff.filter(d => d.type === 'del').length;
+  const ctxs = diff.filter(d => d.type === 'ctx').length;
+  const changes = adds + dels;
   
   if (mode === 'unified') {
-    let html = `<div class="panel-header"><span class="label">Diff (unified)</span><span class="count">${changes} changes</span></div><div class="diff-panel">`;
+    let html = `<div class="panel-header"><span class="label">Diff (unified)</span><span class="count">+${adds}/-${dels}/=${ctxs} · ${changes} changes</span></div><div class="diff-panel">`;
     
     // Group into hunks
     let hunkStart = null;
@@ -213,7 +216,7 @@ function renderDiff(diff, leftLines, rightLines) {
     pane.innerHTML = html;
   } else {
     // Side by side
-    let html = `<div class="panel-header"><span class="label">Diff (side-by-side)</span><span class="count">${changes} changes</span></div>
+    let html = `<div class="panel-header"><span class="label">Diff (side-by-side)</span><span class="count">+${adds}/-${dels}/=${ctxs} · ${changes} changes</span></div>
     <div style="display:flex;flex:1;overflow:hidden">
       <div class="diff-panel" style="width:50%;border-right:1px solid #24253a">
         <div class="panel-header" style="border-bottom:none;background:#0f0f1a">Original</div>
